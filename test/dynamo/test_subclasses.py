@@ -1443,9 +1443,12 @@ class TestNestedTensor(torch._dynamo.test_case.TestCase):
             # varies based on the type of view
             guard_str = "\n".join(guards)
             if isinstance(nt_view._base, NestedTensor):
-                self.assertExpectedInline(guard_str, """Eq(s3 - 1, s0)""")
+                self.assertExpectedInline(guard_str, """Eq(s2 - 1, s0)""")
             else:
-                self.assertExpectedInline(guard_str, """""")
+                if any(isinstance(d, torch.SymInt) for d in nt_view._base.shape):
+                    self.assertExpectedInline(guard_str, """""")
+                else:
+                    self.assertExpectedInline(guard_str, """8*s1*s3 <= 8*s0*s1""")
             return gm
 
         torch._dynamo.reset()
