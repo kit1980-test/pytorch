@@ -4455,6 +4455,12 @@ class TestLinalg(TestCase):
         assert torch.cuda.tunable.tuning_is_enabled() is False
         torch.cuda.tunable.tuning_enable(True)
         assert torch.cuda.tunable.tuning_is_enabled()
+        assert torch.cuda.tunable.numerics_check_is_enabled(), "TunableOp numeric check should be enabled by default"
+        torch.cuda.tunable.numerics_check_enable(False)
+        assert torch.cuda.tunable.numerics_check_is_enabled() is False
+        torch.cuda.tunable.numerics_check_enable(True)
+        assert torch.cuda.tunable.numerics_check_is_enabled()
+        assert not torch.cuda.tunable.get_filename(), "TunableOp filename is empty by default, prior to any op"
         assert torch.cuda.tunable.get_max_tuning_duration() == 30
         assert torch.cuda.tunable.get_max_tuning_iterations() == 100
         assert torch.cuda.tunable.get_max_warmup_duration() == 0
@@ -4475,10 +4481,21 @@ class TestLinalg(TestCase):
             self.check_single_matmul(x, y)
 
         filename = torch.cuda.tunable.get_filename()
+        filename2 = "tunableop_results_tmp.csv"
         ordinal = torch.cuda.current_device()
         assert filename == f"tunableop_results{ordinal}.csv"
         assert len(torch.cuda.tunable.get_validators()) > 0
         assert len(torch.cuda.tunable.get_results()) > 0
+
+        assert torch.cuda.tunable.write_file()  # use default filename
+        assert torch.cuda.tunable.write_file("tunableop_results_tmp.csv")  # use default filename
+        assert torch.cuda.tunable.read_file()  # use default filename, will ignore duplicates and return True
+
+        with open(filename) as file1:
+            file1_contents = file1.read()
+        with open(filename2) as file2:
+            file2_contents = file2.read()
+        assert file1_contents == file2_contents
 
         # disables TunableOp, no file will be written, restore to default values
         torch.cuda.tunable.enable(False)
